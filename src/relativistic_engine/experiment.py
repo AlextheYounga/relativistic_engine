@@ -134,7 +134,7 @@ def run_experiment(config: ExperimentConfig) -> None:
         print_snapshot_pair(snapshot_a, snapshot_b)
 
     print_conservation(engine_a, engine_b)
-    print("\nTemperature uses each frame's own P and V; no bulk-motion correction.")
+    print("\nTemperature uses each frame's own pressure and volume.")
 
 
 def main() -> None:

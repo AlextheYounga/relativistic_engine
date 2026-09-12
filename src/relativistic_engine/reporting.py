@@ -8,7 +8,7 @@ def print_measurement_header(
     trapped_gas_mass: float, specific_gas_constant: float
 ) -> None:
     """Print the invariant inputs and columns used for all stage readings."""
-    print("\nIDEAL-GAS READINGS: T = P * V / (m * R)")
+    print("\nTEMPERATURE: T = P * V / (m * R)")
     print(f"m = {trapped_gas_mass:.3f}    R = {specific_gas_constant:.3f}")
     print()
     print(

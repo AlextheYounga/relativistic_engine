@@ -21,6 +21,7 @@ class ExperimentOutputTests(unittest.TestCase):
         self.assertEqual(report.count("STAGE"), 1)
         self.assertIn("0.0%  WALL", report)
         self.assertIn("PISTON", report)
-        self.assertIn("IDEAL-GAS READINGS", report)
+        self.assertIn("TEMPERATURE: T = P * V / (m * R)", report)
+        self.assertIn("TEMPERATURE", report)
         self.assertIn("CONSERVATION", report)
         self.assertNotIn("MATCHED PISTON EVENT", report)
