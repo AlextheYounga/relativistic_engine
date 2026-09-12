@@ -15,7 +15,11 @@ from .relativity import (
     momentum_from_velocity,
     transform_velocity,
 )
-from .reporting import print_conservation, print_snapshot_pair
+from .reporting import (
+    print_conservation,
+    print_measurement_header,
+    print_snapshot_pair,
+)
 
 
 @dataclass
@@ -99,27 +103,21 @@ def target_time_for_compression_fraction(
 
 
 def run_experiment(config: ExperimentConfig) -> None:
-    print("RELATIVISTIC PISTON TEMPERATURE TEST")
-    print("=" * 95)
-    print(f"particles                : {config.particle_count}")
-    print(f"piston speed             : {config.piston_speed:.5f} c")
-    print(f"gamma                    : {gamma_from_velocity(config.piston_speed):.8f}")
-    print(f"wall-frame initial length: {config.initial_chamber_length:.5f}")
+    gamma = gamma_from_velocity(config.piston_speed)
+    print("RELATIVISTIC PISTON")
     print(
-        f"piston-frame t=0 length  : {config.initial_chamber_length / gamma_from_velocity(config.piston_speed):.5f}"
+        f"particles={config.particle_count}  speed={config.piston_speed:.3f}c  "
+        f"gamma={gamma:.5f}  dt={config.time_step:.5f}"
     )
-    print(f"time step                : {config.time_step:.6f}\n")
-    print("Physics mode: purely elastic piston compression only.")
-    print(
-        "No wall rupture, ignition, escape, phase change, or other irreversible state is modeled."
-    )
+    print("model=1D collisionless gas with elastic boundaries")
+
     engine_a, engine_b = build_engines(config)
-    print(
-        f"\nIndependent initial slices:\n  Frame A starts at t_A = {engine_a.time:.8f}\n  Frame B starts at t_B = {engine_b.time:.8f}"
+    print(f"initial slices: WALL t={engine_a.time:.5f}  PISTON t={engine_b.time:.5f}")
+    print_measurement_header(
+        engine_a.trapped_gas_mass,
+        engine_a.specific_gas_constant,
     )
-    print(
-        "  These slices are physically equivalent but not the same set of simultaneous events."
-    )
+
     for fraction in config.compression_stages:
         engine_a.run_until(
             target_time_for_compression_fraction(
@@ -134,16 +132,9 @@ def run_experiment(config: ExperimentConfig) -> None:
         snapshot_a = engine_a.snapshot_and_reset_interval(config.spatial_bins)
         snapshot_b = engine_b.snapshot_and_reset_interval(config.spatial_bins)
         print_snapshot_pair(snapshot_a, snapshot_b)
-    print_conservation(engine_a)
-    print_conservation(engine_b)
-    print("\nTEMPERATURE INTERPRETATION\n" + "=" * 95)
-    print("The ideal-gas temperature uses T = PV/(mR) in each observer frame.")
-    print(
-        "Each frame supplies its own simultaneous pressure, volume, and particle state."
-    )
-    print(
-        "This is the old-fashioned bulk gas reading; no bulk-motion correction is applied."
-    )
+
+    print_conservation(engine_a, engine_b)
+    print("\nTemperature uses each frame's own P and V; no bulk-motion correction.")
 
 
 def main() -> None:
