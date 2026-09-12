@@ -1,5 +1,5 @@
-from .experiment import ExperimentConfig, run_experiment
+from .experiment import main
 
 
 if __name__ == "__main__":
-    run_experiment(ExperimentConfig())
+    main()

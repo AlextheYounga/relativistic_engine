@@ -2,6 +2,10 @@ Design a clean, educational Python experiment for a hypothetical relativistic pi
 
 The experiment should be treated as an exploratory numerical test. Do NOT assume ahead of time that the frames must agree, and do NOT force their final states to match. Likewise, do not deliberately insert an inconsistent rule merely to manufacture disagreement. Every assumption should be explicit.
 
+Inertial Coordinate Frames:
+- Wall Frame
+- Piston Frame
+
 Physical setup
 
 Use normalized units initially:

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 import numpy as np
 
 from .boundaries import BoundaryWorldlines
-from .constants import AREA, PARTICLE_MASS
+from .constants import AREA, BOLTZMANN_CONSTANT, PARTICLE_MASS
 from .models import CollisionEvent, IntervalBookkeeping, Snapshot
 from .relativity import (
     energy_from_velocity,
@@ -18,6 +16,7 @@ from .relativity import (
     momentum_in_rest_frame,
     velocity_from_energy_momentum,
 )
+from .thermodynamics import apparent_bulk_temperature, bulk_average_pressure
 
 
 class Engine:
@@ -32,14 +31,22 @@ class Engine:
         particle_velocities: np.ndarray,
         worldlines: BoundaryWorldlines,
         time_step: float,
+        cross_sectional_area: float = AREA,
+        boltzmann_constant: float = BOLTZMANN_CONSTANT,
     ) -> None:
+        if cross_sectional_area <= 0.0:
+            raise ValueError("Cross-sectional area must be positive")
+        if boltzmann_constant <= 0.0:
+            raise ValueError("Boltzmann constant must be positive")
         self.frame_name = frame_name
         self.time = float(initial_time)
         self.positions = np.array(particle_positions, dtype=float, copy=True)
         self.velocities = np.array(particle_velocities, dtype=float, copy=True)
         self.worldlines = worldlines
         self.time_step = time_step
-        self.collision_events: List[CollisionEvent] = []
+        self.cross_sectional_area = cross_sectional_area
+        self.boltzmann_constant = boltzmann_constant
+        self.collision_events: list[CollisionEvent] = []
         self.interval = IntervalBookkeeping()
         self.boundary_energy_to_gas = 0.0
         self.boundary_momentum_to_gas = 0.0
@@ -60,7 +67,7 @@ class Engine:
 
     def _reflect_from_boundary(
         self, incoming_velocity: float, boundary_velocity: float
-    ) -> Tuple[float, float, float, float, float]:
+    ) -> tuple[float, float, float, float, float]:
         incoming_energy = float(energy_from_velocity(incoming_velocity))
         incoming_momentum = float(momentum_from_velocity(incoming_velocity))
         rest_energy = energy_in_rest_frame(
@@ -79,7 +86,13 @@ class Engine:
         rest_impulse = 2.0 * rest_momentum
         self.boundary_energy_to_gas += outgoing_energy - incoming_energy
         self.boundary_momentum_to_gas += outgoing_momentum - incoming_momentum
-        return outgoing_velocity, rest_ke, rest_impulse, incoming_energy, outgoing_energy
+        return (
+            outgoing_velocity,
+            rest_ke,
+            rest_impulse,
+            incoming_energy,
+            outgoing_energy,
+        )
 
     def _record_collision(
         self,
@@ -99,7 +112,9 @@ class Engine:
         ) = self._reflect_from_boundary(incoming_velocity, boundary_velocity)
         outgoing_momentum = float(momentum_from_velocity(outgoing_velocity))
         if boundary == "wall":
-            self.interval.end_wall_frame_impulse += abs(incoming_momentum - outgoing_momentum)
+            self.interval.end_wall_frame_impulse += abs(
+                incoming_momentum - outgoing_momentum
+            )
             self.interval.end_wall_rest_impulse += abs(rest_impulse)
         self.collision_events.append(
             CollisionEvent(
@@ -149,8 +164,11 @@ class Engine:
             particle_i = indices[local_i]
             tau = float(max(0.0, left_tau[local_i]))
             outgoing = self._record_collision(
-                "piston", t0 + tau, piston.position + piston.velocity * tau,
-                float(velocities[local_i]), piston.velocity,
+                "piston",
+                t0 + tau,
+                piston.position + piston.velocity * tau,
+                float(velocities[local_i]),
+                piston.velocity,
             )
             self.positions[particle_i] = (
                 piston.position + piston.velocity * tau + outgoing * (dt - tau)
@@ -161,8 +179,11 @@ class Engine:
             particle_i = indices[local_i]
             tau = float(max(0.0, right_tau[local_i]))
             outgoing = self._record_collision(
-                "wall", t0 + tau, wall.position + wall.velocity * tau,
-                float(velocities[local_i]), wall.velocity,
+                "wall",
+                t0 + tau,
+                wall.position + wall.velocity * tau,
+                float(velocities[local_i]),
+                wall.velocity,
             )
             self.positions[particle_i] = (
                 wall.position + wall.velocity * tau + outgoing * (dt - tau)
@@ -172,8 +193,13 @@ class Engine:
         self.time = t0 + dt
         left = self.worldlines.piston(self.time).position
         right = self.worldlines.wall(self.time).position
-        if np.min(self.positions) < left - 2e-6 or np.max(self.positions) > right + 2e-6:
-            raise RuntimeError(f"{self.frame_name}: particle left numerical chamber bounds. Reduce time_step.")
+        if (
+            np.min(self.positions) < left - 2e-6
+            or np.max(self.positions) > right + 2e-6
+        ):
+            raise RuntimeError(
+                f"{self.frame_name}: particle left numerical chamber bounds. Reduce time_step."
+            )
 
     def run_until(self, target_time: float) -> None:
         if target_time < self.time:
@@ -188,42 +214,75 @@ class Engine:
         piston = self.worldlines.piston(self.time)
         wall = self.worldlines.wall(self.time)
         length = wall.position - piston.position
-        volume = length * AREA
+        volume = length * self.cross_sectional_area
         energies = self.particle_energies()
         momenta = self.particle_momenta()
         count = len(self.positions)
         total_energy = float(np.sum(energies))
         total_momentum = float(np.sum(momenta))
         density = count / volume
-        stress = float(np.sum(momenta * self.velocities) / volume)
+        pressure = bulk_average_pressure(momenta, self.velocities, volume)
         bulk_velocity = total_momentum / total_energy
         bulk_gamma = gamma_from_velocity(bulk_velocity)
-        random_ke = float(np.mean(bulk_gamma * (energies - bulk_velocity * momenta) - PARTICLE_MASS))
+        random_ke = float(
+            np.mean(bulk_gamma * (energies - bulk_velocity * momenta) - PARTICLE_MASS)
+        )
         edges = np.linspace(piston.position, wall.position, spatial_bins + 1)
-        bin_index = np.clip(np.searchsorted(edges, self.positions, side="right") - 1, 0, spatial_bins - 1)
-        bin_volume = length / spatial_bins * AREA
+        bin_index = np.clip(
+            np.searchsorted(edges, self.positions, side="right") - 1,
+            0,
+            spatial_bins - 1,
+        )
+        bin_volume = length / spatial_bins * self.cross_sectional_area
         counts = np.bincount(bin_index, minlength=spatial_bins)
-        local_stress = np.bincount(bin_index, weights=momenta * self.velocities, minlength=spatial_bins) / bin_volume
+        local_stress = (
+            np.bincount(
+                bin_index, weights=momenta * self.velocities, minlength=spatial_bins
+            )
+            / bin_volume
+        )
         elapsed = max(self.interval.elapsed_coordinate_time, 1e-30)
         proper = max(self.interval.end_wall_proper_time, 1e-30)
         quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
         return Snapshot(
-            frame_name=self.frame_name, time=self.time,
-            compression_fraction=self.worldlines.compression_fraction_after_start(self.time),
-            piston_position=piston.position, piston_velocity=piston.velocity,
-            wall_position=wall.position, wall_velocity=wall.velocity,
-            chamber_length=length, chamber_volume=volume, number_density=density,
-            energy_density=total_energy / volume, average_gas_stress=stress,
-            end_wall_pressure_frame_native=self.interval.end_wall_frame_impulse / elapsed / AREA,
-            end_wall_pressure_rest_frame=self.interval.end_wall_rest_impulse / proper / AREA,
-            mean_velocity=float(np.mean(self.velocities)), mean_momentum=float(np.mean(momenta)),
-            mean_energy=float(np.mean(energies)), bulk_velocity_from_total_four_momentum=bulk_velocity,
-            random_kinetic_energy_per_particle=random_ke, internal_energy_estimate=random_ke * count,
+            frame_name=self.frame_name,
+            time=self.time,
+            compression_fraction=self.worldlines.compression_fraction_after_start(
+                self.time
+            ),
+            piston_position=piston.position,
+            piston_velocity=piston.velocity,
+            wall_position=wall.position,
+            wall_velocity=wall.velocity,
+            chamber_length=length,
+            chamber_volume=volume,
+            number_density=density,
+            energy_density=total_energy / volume,
+            average_gas_stress=pressure,
+            end_wall_pressure_frame_native=self.interval.end_wall_frame_impulse
+            / elapsed
+            / self.cross_sectional_area,
+            end_wall_pressure_rest_frame=self.interval.end_wall_rest_impulse
+            / proper
+            / self.cross_sectional_area,
+            mean_velocity=float(np.mean(self.velocities)),
+            mean_momentum=float(np.mean(momenta)),
+            mean_energy=float(np.mean(energies)),
+            bulk_velocity_from_total_four_momentum=bulk_velocity,
+            random_kinetic_energy_per_particle=random_ke,
+            internal_energy_estimate=random_ke * count,
             thermal_temperature_like_1d=2.0 * random_ke,
-            frame_native_temperature_like=stress / density,
+            apparent_bulk_temperature=apparent_bulk_temperature(
+                pressure,
+                volume,
+                count,
+                self.boltzmann_constant,
+            ),
             velocity_quantiles=np.quantile(self.velocities, quantiles),
-            momentum_quantiles=np.quantile(momenta, quantiles), energy_quantiles=np.quantile(energies, quantiles),
-            local_bin_density=counts / bin_volume, local_bin_stress=local_stress,
+            momentum_quantiles=np.quantile(momenta, quantiles),
+            energy_quantiles=np.quantile(energies, quantiles),
+            local_bin_density=counts / bin_volume,
+            local_bin_stress=local_stress,
         )
 
     def snapshot_and_reset_interval(self, spatial_bins: int = 10) -> Snapshot:
@@ -231,16 +290,20 @@ class Engine:
         self.interval.reset()
         return result
 
-    def conservation_report(self) -> Dict[str, float]:
+    def conservation_report(self) -> dict[str, float]:
         final_energy = self.total_gas_energy()
         final_momentum = self.total_gas_momentum()
         return {
             "initial_gas_energy": self.initial_total_gas_energy,
             "final_gas_energy": final_energy,
             "boundary_energy_to_gas": self.boundary_energy_to_gas,
-            "energy_residual": final_energy - self.initial_total_gas_energy - self.boundary_energy_to_gas,
+            "energy_residual": final_energy
+            - self.initial_total_gas_energy
+            - self.boundary_energy_to_gas,
             "initial_gas_momentum": self.initial_total_gas_momentum,
             "final_gas_momentum": final_momentum,
             "boundary_momentum_to_gas": self.boundary_momentum_to_gas,
-            "momentum_residual": final_momentum - self.initial_total_gas_momentum - self.boundary_momentum_to_gas,
+            "momentum_residual": final_momentum
+            - self.initial_total_gas_momentum
+            - self.boundary_momentum_to_gas,
         }

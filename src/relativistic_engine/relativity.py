@@ -66,11 +66,15 @@ def transform_event(
     )
 
 
-def momentum_in_rest_frame(energy: float, momentum: float, object_velocity: float) -> float:
+def momentum_in_rest_frame(
+    energy: float, momentum: float, object_velocity: float
+) -> float:
     gamma = gamma_from_velocity(object_velocity)
     return gamma * (momentum - object_velocity * energy)
 
 
-def energy_in_rest_frame(energy: float, momentum: float, object_velocity: float) -> float:
+def energy_in_rest_frame(
+    energy: float, momentum: float, object_velocity: float
+) -> float:
     gamma = gamma_from_velocity(object_velocity)
     return gamma * (energy - object_velocity * momentum)

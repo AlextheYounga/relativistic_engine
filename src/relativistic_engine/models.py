@@ -56,7 +56,7 @@ class Snapshot:
     random_kinetic_energy_per_particle: float
     internal_energy_estimate: float
     thermal_temperature_like_1d: float
-    frame_native_temperature_like: float
+    apparent_bulk_temperature: float
     velocity_quantiles: np.ndarray
     momentum_quantiles: np.ndarray
     energy_quantiles: np.ndarray

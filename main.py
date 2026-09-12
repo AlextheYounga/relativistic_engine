@@ -1,8 +1,7 @@
-"""Compatibility entry point for the packaged implementation."""
+"""Run the relativistic piston experiment."""
 
-from src.relativistic_engine import *
-from src.relativistic_engine.experiment import ExperimentConfig, run_experiment
+from relativistic_engine.experiment import main
 
 
 if __name__ == "__main__":
-    run_experiment(ExperimentConfig())
+    main()

@@ -14,7 +14,9 @@ class BoundaryState:
 class BoundaryWorldlines:
     """Exact worldlines for both boundaries in one coordinate frame."""
 
-    def __init__(self, frame_name: str, chamber_length: float, piston_speed: float) -> None:
+    def __init__(
+        self, frame_name: str, chamber_length: float, piston_speed: float
+    ) -> None:
         self.frame_name = frame_name
         self.length = chamber_length
         self.beta = piston_speed
@@ -22,16 +24,26 @@ class BoundaryWorldlines:
 
     def piston(self, time: float) -> BoundaryState:
         if self.frame_name == "WALL":
-            return BoundaryState(0.0, 0.0) if time < 0 else BoundaryState(self.beta * time, self.beta)
+            return (
+                BoundaryState(0.0, 0.0)
+                if time < 0
+                else BoundaryState(self.beta * time, self.beta)
+            )
         if self.frame_name == "PISTON":
-            return BoundaryState(-self.beta * time, -self.beta) if time < 0 else BoundaryState(0.0, 0.0)
+            return (
+                BoundaryState(-self.beta * time, -self.beta)
+                if time < 0
+                else BoundaryState(0.0, 0.0)
+            )
         raise ValueError(self.frame_name)
 
     def wall(self, time: float) -> BoundaryState:
         if self.frame_name == "WALL":
             return BoundaryState(self.length, 0.0)
         if self.frame_name == "PISTON":
-            return BoundaryState(self.length / self.gamma - self.beta * time, -self.beta)
+            return BoundaryState(
+                self.length / self.gamma - self.beta * time, -self.beta
+            )
         raise ValueError(self.frame_name)
 
     def chamber_length(self, time: float) -> float:
