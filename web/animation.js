@@ -1,87 +1,248 @@
 (() => {
   "use strict";
 
-  const $ = (id) => document.getElementById(id);
-  const state = { frames: [], index: 0, playing: false, lastTick: 0, elapsed: 0, speed: 1 };
+  const element = (id) => document.getElementById(id);
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const colors = { ink: "#e8edf2", muted: "#8995a0", line: "#34434c", accent: "#7ee0c1" };
+  const colors = {
+    background: "#0b1115",
+    block: "#1a252c",
+    blockEdge: "#52616a",
+    gasCold: "rgba(46, 133, 140, 0.18)",
+    gasHot: "rgba(255, 112, 72, 0.42)",
+    piston: "#d7e0e5",
+    pistonEdge: "#7ee0c1",
+    wall: "#ffb38f",
+    forward: "#7ee0c1",
+    backward: "#ff8d68",
+    text: "#8995a0",
+  };
+  const state = {
+    frames: [],
+    bounds: {},
+    maximumTemperature: 1,
+    index: 0,
+    playing: false,
+    lastTick: 0,
+    elapsed: 0,
+    speed: 1,
+  };
 
   function number(value, digits = 3) {
     return Number.isFinite(value) ? value.toFixed(digits) : "--";
   }
 
   function showReadouts(id, chamber) {
-    $(id).innerHTML = [
-      ["time", `t ${number(chamber.time, 3)}`],
-      ["pressure", `${number(chamber.pressure, 3)} P`],
-      ["volume", `${number(chamber.chamber_volume, 3)} V`],
-      ["temperature", number(chamber.temperature, 3)]
-    ].map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("");
+    element(id).innerHTML = [
+      ["time", `t ${number(chamber.time)}`],
+      ["pressure", number(chamber.pressure)],
+      ["volume", number(chamber.chamber_volume)],
+      ["temperature", number(chamber.temperature)],
+    ]
+      .map(
+        ([label, value]) =>
+          `<div><dt>${label}</dt><dd>${value}</dd></div>`,
+      )
+      .join("");
   }
 
-  function draw(canvas, chamber) {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, Math.round(rect.width * dpr));
-    canvas.height = Math.max(1, Math.round(rect.height * dpr));
-    const ctx = canvas.getContext("2d");
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const width = rect.width;
-    const height = rect.height;
-    ctx.clearRect(0, 0, width, height);
-    const left = 25, right = width - 25, top = 29, bottom = height - 29;
-    const piston = Number(chamber.piston_position);
-    const wall = Number(chamber.wall_position);
-    const lowerBound = Math.min(piston, wall);
-    const span = Math.abs(wall - piston) || 1;
-
-    ctx.strokeStyle = colors.line;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(left, top, right - left, bottom - top);
-    ctx.strokeStyle = colors.accent;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(left, top - 1); ctx.lineTo(left, bottom + 1);
-    ctx.moveTo(right, top - 1); ctx.lineTo(right, bottom + 1);
-    ctx.stroke();
-    ctx.fillStyle = colors.muted;
-    ctx.font = "10px ui-monospace, monospace";
-    ctx.fillText(`x ${number(piston, 2)}`, left - 9, bottom + 18);
-    ctx.fillText(`x ${number(wall, 2)}`, right - 26, bottom + 18);
-
-    const positions = Array.isArray(chamber.particle_positions) ? chamber.particle_positions : [];
-    const velocities = Array.isArray(chamber.particle_velocities) ? chamber.particle_velocities : [];
-    const maxVelocity = Math.max(1, ...velocities.map((v) => Math.abs(Number(v))));
-    positions.forEach((position, index) => {
-      const fraction = Math.max(0, Math.min(1, (Number(position) - lowerBound) / span));
-      const x = left + fraction * (right - left);
-      const y = top + 14 + ((index * 47) % Math.max(24, bottom - top - 28));
-      const velocity = Number(velocities[index]) || 0;
-      const intensity = Math.min(1, Math.abs(velocity) / maxVelocity);
-      const hue = velocity >= 0 ? 164 : 16;
-      ctx.fillStyle = `hsl(${hue} ${55 + intensity * 25}% ${48 + intensity * 18}%)`;
-      ctx.beginPath(); ctx.arc(x, y, 2.4 + intensity * 1.8, 0, Math.PI * 2); ctx.fill();
+  function calculateBounds(frameName) {
+    const coordinates = state.frames.flatMap((frame) => {
+      const chamber = frame[frameName];
+      return [chamber.piston_position, chamber.wall_position];
     });
+    return {
+      minimum: Math.min(...coordinates),
+      maximum: Math.max(...coordinates),
+    };
+  }
+
+  function coordinateToCanvas(position, bounds, left, right) {
+    const coordinateSpan = bounds.maximum - bounds.minimum || 1;
+    const fraction = (position - bounds.minimum) / coordinateSpan;
+    return left + fraction * (right - left);
+  }
+
+  function gasColor(temperature) {
+    const heat = Math.min(1, Math.max(0, temperature / state.maximumTemperature));
+    return heat < 0.25 ? colors.gasCold : colors.gasHot;
+  }
+
+  function drawEngine(canvas, chamber, bounds, compressionFraction) {
+    const rectangle = canvas.getBoundingClientRect();
+    const pixelRatio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(rectangle.width * pixelRatio));
+    canvas.height = Math.max(1, Math.round(rectangle.height * pixelRatio));
+
+    const context = canvas.getContext("2d");
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    const width = rectangle.width;
+    const height = rectangle.height;
+    const cylinderLeft = Math.max(76, width * 0.16);
+    const cylinderRight = width - 30;
+    const cylinderTop = 54;
+    const cylinderBottom = height - 54;
+    const cylinderMiddle = (cylinderTop + cylinderBottom) / 2;
+    const pistonX = coordinateToCanvas(
+      chamber.piston_position,
+      bounds,
+      cylinderLeft,
+      cylinderRight,
+    );
+    const wallX = coordinateToCanvas(
+      chamber.wall_position,
+      bounds,
+      cylinderLeft,
+      cylinderRight,
+    );
+    const gasLeft = Math.min(pistonX, wallX);
+    const gasRight = Math.max(pistonX, wallX);
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = colors.background;
+    context.fillRect(0, 0, width, height);
+
+    drawCylinder(context, cylinderLeft, cylinderRight, cylinderTop, cylinderBottom);
+
+    context.fillStyle = gasColor(chamber.temperature);
+    context.fillRect(
+      gasLeft,
+      cylinderTop + 5,
+      gasRight - gasLeft,
+      cylinderBottom - cylinderTop - 10,
+    );
+
+    drawActuatorRod(context, pistonX, cylinderMiddle);
+    drawPiston(context, pistonX, cylinderTop, cylinderBottom);
+    drawEndWall(context, wallX, cylinderTop, cylinderBottom);
+    drawParticles(context, chamber, bounds, cylinderLeft, cylinderRight, cylinderTop, cylinderBottom);
+    drawLabels(context, pistonX, wallX, cylinderTop, cylinderBottom, compressionFraction);
+  }
+
+  function drawCylinder(context, left, right, top, bottom) {
+    context.fillStyle = colors.block;
+    context.fillRect(left - 8, top - 11, right - left + 16, 11);
+    context.fillRect(left - 8, bottom, right - left + 16, 11);
+    context.strokeStyle = colors.blockEdge;
+    context.lineWidth = 1.5;
+    context.strokeRect(left, top, right - left, bottom - top);
+
+    context.strokeStyle = "rgba(126, 224, 193, 0.12)";
+    context.setLineDash([4, 8]);
+    context.beginPath();
+    context.moveTo(left, (top + bottom) / 2);
+    context.lineTo(right, (top + bottom) / 2);
+    context.stroke();
+    context.setLineDash([]);
+  }
+
+  function drawActuatorRod(context, pistonX, middle) {
+    const rodEnd = Math.max(14, pistonX - 7);
+    context.lineCap = "round";
+    context.strokeStyle = "#11191e";
+    context.lineWidth = 13;
+    context.beginPath();
+    context.moveTo(12, middle);
+    context.lineTo(rodEnd, middle);
+    context.stroke();
+    context.strokeStyle = "#75838b";
+    context.lineWidth = 5;
+    context.stroke();
+    context.lineCap = "butt";
+  }
+
+  function drawPiston(context, pistonX, top, bottom) {
+    context.fillStyle = colors.piston;
+    context.strokeStyle = colors.pistonEdge;
+    context.lineWidth = 2;
+    context.fillRect(pistonX - 7, top + 2, 14, bottom - top - 4);
+    context.strokeRect(pistonX - 7, top + 2, 14, bottom - top - 4);
+
+    context.fillStyle = "#3b4951";
+    context.fillRect(pistonX - 4, top + 13, 8, 3);
+    context.fillRect(pistonX - 4, bottom - 16, 8, 3);
+  }
+
+  function drawEndWall(context, wallX, top, bottom) {
+    context.fillStyle = colors.wall;
+    context.fillRect(wallX - 4, top - 3, 8, bottom - top + 6);
+    context.fillStyle = "rgba(255, 179, 143, 0.22)";
+    for (let y = top; y < bottom; y += 13) {
+      context.fillRect(wallX + 4, y, 10, 5);
+    }
+  }
+
+  function drawParticles(context, chamber, bounds, left, right, top, bottom) {
+    const positions = chamber.particle_positions ?? [];
+    const velocities = chamber.particle_velocities ?? [];
+    const verticalSpace = Math.max(24, bottom - top - 28);
+
+    positions.forEach((position, index) => {
+      const x = coordinateToCanvas(Number(position), bounds, left, right);
+      const y = top + 14 + ((index * 47) % verticalSpace);
+      const velocity = Number(velocities[index]) || 0;
+      const particleColor = velocity >= 0 ? colors.forward : colors.backward;
+
+      context.strokeStyle = particleColor;
+      context.globalAlpha = 0.28;
+      context.lineWidth = 1.4;
+      context.beginPath();
+      context.moveTo(x - velocity * 12, y);
+      context.lineTo(x, y);
+      context.stroke();
+
+      context.globalAlpha = 0.9;
+      context.fillStyle = particleColor;
+      context.beginPath();
+      context.arc(x, y, 2.4, 0, Math.PI * 2);
+      context.fill();
+      context.globalAlpha = 1;
+    });
+  }
+
+  function drawLabels(context, pistonX, wallX, top, bottom, compressionFraction) {
+    context.fillStyle = colors.text;
+    context.font = "10px ui-monospace, monospace";
+    context.textAlign = "center";
+    context.fillText("PISTON", pistonX, top - 22);
+    context.fillText("END WALL", wallX, top - 22);
+    context.fillText(
+      `${number(compressionFraction * 100, 1)}% COMPRESSION`,
+      (pistonX + wallX) / 2,
+      bottom + 31,
+    );
+    context.textAlign = "start";
   }
 
   function render() {
     const frame = state.frames[state.index];
     if (!frame) return;
-    draw($("wall-canvas"), frame.wall);
-    draw($("piston-canvas"), frame.piston);
+
+    drawEngine(
+      element("wall-canvas"),
+      frame.wall,
+      state.bounds.wall,
+      frame.compression_fraction,
+    );
+    drawEngine(
+      element("piston-canvas"),
+      frame.piston,
+      state.bounds.piston,
+      frame.compression_fraction,
+    );
     showReadouts("wall-readouts", frame.wall);
     showReadouts("piston-readouts", frame.piston);
-    $("frame-number").textContent = `Frame ${state.index + 1}`;
-    $("frame-total").textContent = state.frames.length;
-    $("scrubber").value = state.index;
-    $("compression").textContent = `Compression: ${number(Number(frame.compression_fraction) * 100, 1)}%`;
-    $("current-time").textContent = `t = ${number(frame.wall.time, 3)}`;
+    element("frame-number").textContent = `Frame ${state.index + 1}`;
+    element("frame-total").textContent = state.frames.length;
+    element("scrubber").value = state.index;
+    element("compression").textContent =
+      `Compression: ${number(frame.compression_fraction * 100, 1)}%`;
+    element("current-time").textContent = `wall t = ${number(frame.wall.time)}`;
   }
 
   function setPlaying(playing) {
     state.playing = playing;
-    $("play-pause").textContent = playing ? "Pause" : "Play";
-    $("play-pause").setAttribute("aria-pressed", String(playing));
+    element("play-pause").textContent = playing ? "Pause" : "Play";
+    element("play-pause").setAttribute("aria-pressed", String(playing));
     state.lastTick = performance.now();
     if (playing) requestAnimationFrame(tick);
   }
@@ -100,34 +261,84 @@
   }
 
   function bindControls() {
-    $("play-pause").addEventListener("click", () => setPlaying(!state.playing));
-    $("restart").addEventListener("click", () => { state.index = 0; state.elapsed = 0; render(); });
-    $("scrubber").addEventListener("input", (event) => { state.index = Number(event.target.value); state.elapsed = 0; render(); });
-    $("speed").addEventListener("change", (event) => { state.speed = Number(event.target.value); });
+    element("play-pause").addEventListener("click", () => {
+      setPlaying(!state.playing);
+    });
+    element("restart").addEventListener("click", () => {
+      state.index = 0;
+      state.elapsed = 0;
+      render();
+    });
+    element("scrubber").addEventListener("input", (event) => {
+      state.index = Number(event.target.value);
+      state.elapsed = 0;
+      render();
+    });
+    element("speed").addEventListener("change", (event) => {
+      state.speed = Number(event.target.value);
+    });
     window.addEventListener("resize", render);
+  }
+
+  async function fetchSimulation() {
+    const baseUrl = import.meta.env?.BASE_URL ?? "./";
+    const urls = [`${baseUrl}simulation.json`, `${baseUrl}public/simulation.json`];
+    const failures = [];
+
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+        if (response.ok) return response.json();
+        failures.push(`${url}: HTTP ${response.status}`);
+      } catch (error) {
+        failures.push(`${url}: ${error.message}`);
+      }
+    }
+    throw new Error(failures.join("; "));
   }
 
   async function load() {
     try {
-      const simulationUrl = `${import.meta.env.BASE_URL}simulation.json`;
-      const response = await fetch(simulationUrl, { cache: "no-store" });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (!Array.isArray(data.frames) || !data.frames.length) throw new Error("No frames");
+      const data = await fetchSimulation();
+      if (!Array.isArray(data.frames) || !data.frames.length) {
+        throw new Error("The JSON file contains no animation frames");
+      }
       state.frames = data.frames;
-      $("particle-count").textContent = `${data.metadata?.particle_count ?? "--"} particles`;
-      $("piston-speed").textContent = `piston ${number(Number(data.metadata?.piston_speed), 3)}c`;
-      $("formula").textContent = data.metadata?.temperature_formula || "T = P * V / (m * R)";
-      $("scrubber").max = state.frames.length - 1;
-      $("loading").hidden = true;
-      $("viewer").hidden = false;
+      state.bounds.wall = calculateBounds("wall");
+      state.bounds.piston = calculateBounds("piston");
+      state.maximumTemperature = Math.max(
+        1,
+        ...state.frames.flatMap((frame) => [
+          frame.wall.temperature,
+          frame.piston.temperature,
+        ]),
+      );
+
+      element("particle-count").textContent =
+        `${data.metadata?.particle_count ?? "--"} particles`;
+      element("piston-speed").textContent =
+        `piston ${number(Number(data.metadata?.piston_speed))}c`;
+      element("formula").textContent =
+        data.metadata?.temperature_formula || "T = P * V / (m * R)";
+      element("scrubber").max = state.frames.length - 1;
+      element("loading").hidden = true;
+      element("viewer").hidden = false;
       bindControls();
       render();
-      if (reducedMotion) $("play-pause").setAttribute("aria-label", "Play simulation (reduced motion enabled)");
+      if (reducedMotion) {
+        element("play-pause").setAttribute(
+          "aria-label",
+          "Play simulation (reduced motion enabled)",
+        );
+      }
     } catch (error) {
       console.error(error);
-      $("loading").hidden = true;
-      $("error").hidden = false;
+      element("loading").hidden = true;
+      element("error-detail").textContent =
+        window.location.protocol === "file:"
+          ? "Browsers block local module data. Run `npm --prefix web run dev` and open the URL it prints."
+          : `Could not load simulation data (${error.message}). Run the Python simulation first.`;
+      element("error").hidden = false;
     }
   }
 

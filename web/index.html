@@ -13,7 +13,7 @@
       <div>
         <p class="eyebrow">RELATIVISTIC ENGINE / OBSERVATORY</p>
         <h1>Chamber comparison</h1>
-        <p class="lede">The same piston event viewed from two independently evolved frames.</p>
+        <p class="lede">A working piston, chamber, and gas viewed from two independently evolved frames.</p>
       </div>
       <div class="run-meta" aria-label="Simulation metadata">
         <span id="particle-count">-- particles</span>
@@ -27,7 +27,10 @@
     </section>
 
     <section id="error" class="notice notice-error" hidden aria-live="assertive">
-      <p><strong>Simulation unavailable.</strong> Serve the <code>web/</code> directory over HTTP and first generate <code>simulation.json</code> beside this page.</p>
+      <p>
+        <strong>Simulation unavailable.</strong>
+        <span id="error-detail">Run the simulation, then open the viewer through Vite.</span>
+      </p>
     </section>
 
     <section id="viewer" hidden aria-label="Simulation viewer">
@@ -48,6 +51,13 @@
           <canvas id="piston-canvas" role="img" aria-label="Piston chamber particle visualization"></canvas>
           <dl class="readouts" id="piston-readouts"></dl>
         </article>
+      </div>
+
+      <div class="visual-key" aria-label="Animation legend">
+        <span><i class="key-piston"></i>Piston</span>
+        <span><i class="key-wall"></i>End wall</span>
+        <span><i class="key-forward"></i>Particle moving right</span>
+        <span><i class="key-backward"></i>Particle moving left</span>
       </div>
 
       <div class="timeline">
