@@ -21,7 +21,7 @@ from .relativity import (
     transform_velocity,
     velocity_from_energy_momentum,
 )
-from .thermodynamics import apparent_bulk_temperature, bulk_average_pressure
+from .thermodynamics import bulk_average_pressure, ideal_gas_temperature
 
 __all__ = [
     "BoundaryState",
@@ -31,13 +31,13 @@ __all__ = [
     "ExperimentConfig",
     "IntervalBookkeeping",
     "Snapshot",
-    "apparent_bulk_temperature",
     "build_engines",
     "bulk_average_pressure",
     "energy_from_velocity",
     "energy_in_rest_frame",
     "gamma_from_velocity",
     "inverse_transform_velocity",
+    "ideal_gas_temperature",
     "make_initial_wall_frame_gas",
     "momentum_from_velocity",
     "momentum_in_rest_frame",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from .boundaries import BoundaryWorldlines
-from .constants import AREA, BOLTZMANN_CONSTANT, PARTICLE_MASS
+from .constants import AREA, PARTICLE_MASS, SPECIFIC_GAS_CONSTANT
 from .models import CollisionEvent, IntervalBookkeeping, Snapshot
 from .relativity import (
     energy_from_velocity,
@@ -16,7 +16,7 @@ from .relativity import (
     momentum_in_rest_frame,
     velocity_from_energy_momentum,
 )
-from .thermodynamics import apparent_bulk_temperature, bulk_average_pressure
+from .thermodynamics import bulk_average_pressure, ideal_gas_temperature
 
 
 class Engine:
@@ -32,12 +32,12 @@ class Engine:
         worldlines: BoundaryWorldlines,
         time_step: float,
         cross_sectional_area: float = AREA,
-        boltzmann_constant: float = BOLTZMANN_CONSTANT,
+        specific_gas_constant: float = SPECIFIC_GAS_CONSTANT,
     ) -> None:
         if cross_sectional_area <= 0.0:
             raise ValueError("Cross-sectional area must be positive")
-        if boltzmann_constant <= 0.0:
-            raise ValueError("Boltzmann constant must be positive")
+        if specific_gas_constant <= 0.0:
+            raise ValueError("Specific gas constant must be positive")
         self.frame_name = frame_name
         self.time = float(initial_time)
         self.positions = np.array(particle_positions, dtype=float, copy=True)
@@ -45,7 +45,8 @@ class Engine:
         self.worldlines = worldlines
         self.time_step = time_step
         self.cross_sectional_area = cross_sectional_area
-        self.boltzmann_constant = boltzmann_constant
+        self.trapped_gas_mass = len(self.positions) * PARTICLE_MASS
+        self.specific_gas_constant = specific_gas_constant
         self.collision_events: list[CollisionEvent] = []
         self.interval = IntervalBookkeeping()
         self.boundary_energy_to_gas = 0.0
@@ -256,6 +257,8 @@ class Engine:
             wall_velocity=wall.velocity,
             chamber_length=length,
             chamber_volume=volume,
+            trapped_gas_mass=self.trapped_gas_mass,
+            specific_gas_constant=self.specific_gas_constant,
             number_density=density,
             energy_density=total_energy / volume,
             average_gas_stress=pressure,
@@ -272,11 +275,11 @@ class Engine:
             random_kinetic_energy_per_particle=random_ke,
             internal_energy_estimate=random_ke * count,
             thermal_temperature_like_1d=2.0 * random_ke,
-            apparent_bulk_temperature=apparent_bulk_temperature(
+            ideal_gas_temperature=ideal_gas_temperature(
                 pressure,
                 volume,
-                count,
-                self.boltzmann_constant,
+                self.trapped_gas_mass,
+                self.specific_gas_constant,
             ),
             velocity_quantiles=np.quantile(self.velocities, quantiles),
             momentum_quantiles=np.quantile(momenta, quantiles),

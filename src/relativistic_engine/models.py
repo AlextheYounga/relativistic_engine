@@ -44,6 +44,8 @@ class Snapshot:
     wall_velocity: float
     chamber_length: float
     chamber_volume: float
+    trapped_gas_mass: float
+    specific_gas_constant: float
     number_density: float
     energy_density: float
     average_gas_stress: float
@@ -56,7 +58,7 @@ class Snapshot:
     random_kinetic_energy_per_particle: float
     internal_energy_estimate: float
     thermal_temperature_like_1d: float
-    apparent_bulk_temperature: float
+    ideal_gas_temperature: float
     velocity_quantiles: np.ndarray
     momentum_quantiles: np.ndarray
     energy_quantiles: np.ndarray

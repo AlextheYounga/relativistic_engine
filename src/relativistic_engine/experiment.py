@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .boundaries import BoundaryWorldlines
-from .constants import AREA, BOLTZMANN_CONSTANT, C
+from .constants import AREA, C, SPECIFIC_GAS_CONSTANT
 from .engine import Engine
 from .preparation import build_equivalent_piston_frame_slice
 from .relativity import (
@@ -23,7 +23,7 @@ class ExperimentConfig:
     speed_of_light: float = C
     initial_chamber_length: float = 10.0
     cross_sectional_area: float = AREA
-    boltzmann_constant: float = BOLTZMANN_CONSTANT
+    specific_gas_constant: float = SPECIFIC_GAS_CONSTANT
     piston_speed: float = 0.95
     particle_count: int = 1000
     preparation_time: float = 12.0
@@ -69,7 +69,7 @@ def build_engines(config: ExperimentConfig) -> tuple[Engine, Engine]:
             ),
             time_step=config.time_step,
             cross_sectional_area=config.cross_sectional_area,
-            boltzmann_constant=config.boltzmann_constant,
+            specific_gas_constant=config.specific_gas_constant,
         ),
         Engine(
             frame_name="PISTON",
@@ -81,7 +81,7 @@ def build_engines(config: ExperimentConfig) -> tuple[Engine, Engine]:
             ),
             time_step=config.time_step,
             cross_sectional_area=config.cross_sectional_area,
-            boltzmann_constant=config.boltzmann_constant,
+            specific_gas_constant=config.specific_gas_constant,
         ),
     )
 
@@ -137,12 +137,12 @@ def run_experiment(config: ExperimentConfig) -> None:
     print_conservation(engine_a)
     print_conservation(engine_b)
     print("\nTEMPERATURE INTERPRETATION\n" + "=" * 95)
-    print("The apparent bulk temperature uses T = PV/(N k_B) in each observer frame.")
+    print("The ideal-gas temperature uses T = PV/(mR) in each observer frame.")
     print(
         "Each frame supplies its own simultaneous pressure, volume, and particle state."
     )
     print(
-        "Directed bulk motion contributes to this apparent temperature; it is not a proper comoving temperature."
+        "This is the old-fashioned bulk gas reading; no bulk-motion correction is applied."
     )
 
 

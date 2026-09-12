@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from .constants import BOLTZMANN_CONSTANT
-
 
 def bulk_average_pressure(
     momenta: np.ndarray,
@@ -20,17 +18,17 @@ def bulk_average_pressure(
     return float(np.sum(momenta * velocities) / chamber_volume)
 
 
-def apparent_bulk_temperature(
+def ideal_gas_temperature(
     pressure: float,
     chamber_volume: float,
-    particle_count: int,
-    boltzmann_constant: float = BOLTZMANN_CONSTANT,
+    trapped_gas_mass: float,
+    specific_gas_constant: float,
 ) -> float:
-    """Infer an observer-frame bulk temperature from ``PV = Nk_B T``."""
+    """Infer a bulk gas temperature from ``PV = mRT``."""
     if chamber_volume <= 0.0:
         raise ValueError("Chamber volume must be positive")
-    if particle_count <= 0:
-        raise ValueError("Particle count must be positive")
-    if boltzmann_constant <= 0.0:
-        raise ValueError("Boltzmann constant must be positive")
-    return pressure * chamber_volume / (particle_count * boltzmann_constant)
+    if trapped_gas_mass <= 0.0:
+        raise ValueError("Trapped gas mass must be positive")
+    if specific_gas_constant <= 0.0:
+        raise ValueError("Specific gas constant must be positive")
+    return pressure * chamber_volume / (trapped_gas_mass * specific_gas_constant)
