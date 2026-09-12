@@ -13,14 +13,18 @@ class WebAssetTests(unittest.TestCase):
 
     def test_animation_uses_fixed_frame_bounds_and_engine_components(self) -> None:
         repository_root = Path(__file__).parent.parent
-        javascript = (repository_root / "web" / "animation.js").read_text(
+        animation = (repository_root / "web" / "animation.js").read_text(
+            encoding="utf-8"
+        )
+        renderer = (repository_root / "web" / "engine-renderer.js").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("state.bounds = calculateSharedBounds()", javascript)
-        self.assertIn("drawPiston(context", javascript)
-        self.assertIn("drawEndWall(context", javascript)
-        self.assertIn("drawActuatorRod(context", javascript)
+        self.assertIn("calculateFrameBounds(state.frames", animation)
+        self.assertIn("showMotion(\"wall-motion\"", animation)
+        self.assertIn("drawPiston(context", renderer)
+        self.assertIn("drawEndWall(context", renderer)
+        self.assertIn("drawConnectingRod(context", renderer)
 
 
 if __name__ == "__main__":

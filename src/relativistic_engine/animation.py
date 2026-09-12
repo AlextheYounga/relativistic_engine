@@ -103,9 +103,11 @@ def _frame_state(engine: Engine, piston_proper_length: float) -> dict[str, Any]:
     return {
         "time": snapshot.time,
         "piston_position": snapshot.piston_position,
+        "piston_velocity": snapshot.piston_velocity,
         "piston_length": piston_length,
         "piston_face_area": engine.cross_sectional_area,
         "wall_position": snapshot.wall_position,
+        "wall_velocity": snapshot.wall_velocity,
         "chamber_length": snapshot.chamber_length,
         "chamber_volume": snapshot.chamber_volume,
         "pressure": snapshot.average_gas_stress,

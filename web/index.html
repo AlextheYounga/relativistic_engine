@@ -38,7 +38,7 @@
         <article class="chamber-panel">
           <div class="panel-heading">
             <div><span class="panel-index">01</span><h2>WALL</h2></div>
-            <span class="panel-tag">end-wall rest frame</span>
+            <span id="wall-motion" class="panel-tag">end-wall rest frame</span>
           </div>
           <canvas id="wall-canvas" role="img" aria-label="Wall chamber particle visualization"></canvas>
           <dl class="readouts" id="wall-readouts"></dl>
@@ -46,7 +46,7 @@
         <article class="chamber-panel">
           <div class="panel-heading">
             <div><span class="panel-index">02</span><h2>PISTON</h2></div>
-            <span class="panel-tag">piston rest frame</span>
+            <span id="piston-motion" class="panel-tag">piston rest frame</span>
           </div>
           <canvas id="piston-canvas" role="img" aria-label="Piston chamber particle visualization"></canvas>
           <dl class="readouts" id="piston-readouts"></dl>
@@ -60,8 +60,7 @@
         <span><i class="key-backward"></i>Particle moving left</span>
       </div>
       <p class="dimension-note">
-        Shared spatial scale. Axial piston length contracts between frames;
-        piston face area remains unchanged.
+        Engine views are fitted independently so both frames remain easy to inspect.
       </p>
 
       <div class="timeline">
