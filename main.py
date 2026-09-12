@@ -1,6 +1,8 @@
-def main():
-    print("Hello from relativistic-engine!")
+"""Compatibility entry point for the packaged implementation."""
+
+from src.relativistic_engine import *
+from src.relativistic_engine.experiment import ExperimentConfig, run_experiment
 
 
 if __name__ == "__main__":
-    main()
+    run_experiment(ExperimentConfig())
