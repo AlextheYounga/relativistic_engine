@@ -1,5 +1,7 @@
 ## Relativistic Engine
 
+![Relativistic Engine GIF](./docs/images/relativistic_engine.gif)
+
 This project independently evolves a one-dimensional collisionless gas in the
 end-wall frame and the post-acceleration piston frame.
 
