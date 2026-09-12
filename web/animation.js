@@ -2,10 +2,14 @@ import { calculateFrameBounds, drawEngine } from "./engine-renderer.js";
 
 const element = (id) => document.getElementById(id);
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const temperatureFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 const state = {
   frames: [],
   bounds: {},
-  maximumTemperature: 1,
+  maximumModelTemperature: 1,
   index: 0,
   playing: false,
   lastTick: 0,
@@ -15,6 +19,10 @@ const state = {
 
 function number(value, digits = 3) {
   return Number.isFinite(value) ? value.toFixed(digits) : "--";
+}
+
+function temperature(value) {
+  return Number.isFinite(value) ? temperatureFormatter.format(value) : "--";
 }
 
 function velocity(value) {
@@ -30,7 +38,7 @@ function showReadouts(id, chamber) {
     ["face area", number(chamber.piston_face_area)],
     ["pressure", number(chamber.pressure)],
     ["volume", number(chamber.chamber_volume)],
-    ["temperature", number(chamber.temperature)],
+    ["temperature (deg F)", temperature(chamber.temperature)],
   ];
   element(id).innerHTML = readings
     .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
@@ -51,14 +59,14 @@ function render() {
     frame.wall,
     state.bounds.wall,
     frame.compression_fraction,
-    state.maximumTemperature,
+    state.maximumModelTemperature,
   );
   drawEngine(
     element("piston-canvas"),
     frame.piston,
     state.bounds.piston,
     frame.compression_fraction,
-    state.maximumTemperature,
+    state.maximumModelTemperature,
   );
   showReadouts("wall-readouts", frame.wall);
   showReadouts("piston-readouts", frame.piston);
@@ -135,9 +143,12 @@ function prepareSimulation(data) {
   state.frames = data.frames;
   state.bounds.wall = calculateFrameBounds(state.frames, "wall");
   state.bounds.piston = calculateFrameBounds(state.frames, "piston");
-  state.maximumTemperature = Math.max(
+  state.maximumModelTemperature = Math.max(
     1,
-    ...state.frames.flatMap((frame) => [frame.wall.temperature, frame.piston.temperature]),
+    ...state.frames.flatMap((frame) => [
+      frame.wall.model_temperature,
+      frame.piston.model_temperature,
+    ]),
   );
 }
 

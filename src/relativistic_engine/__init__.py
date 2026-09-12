@@ -22,7 +22,13 @@ from .relativity import (
     transform_velocity,
     velocity_from_energy_momentum,
 )
-from .thermodynamics import bulk_average_pressure, ideal_gas_temperature
+from .thermodynamics import (
+    TemperatureCalibration,
+    bulk_average_pressure,
+    fahrenheit_to_kelvin,
+    ideal_gas_temperature,
+    kelvin_to_fahrenheit,
+)
 
 __all__ = [
     "BoundaryState",
@@ -32,13 +38,16 @@ __all__ = [
     "ExperimentConfig",
     "IntervalBookkeeping",
     "Snapshot",
+    "TemperatureCalibration",
     "build_engines",
     "bulk_average_pressure",
+    "fahrenheit_to_kelvin",
     "energy_from_velocity",
     "energy_in_rest_frame",
     "gamma_from_velocity",
     "inverse_transform_velocity",
     "ideal_gas_temperature",
+    "kelvin_to_fahrenheit",
     "make_initial_wall_frame_gas",
     "momentum_from_velocity",
     "momentum_in_rest_frame",

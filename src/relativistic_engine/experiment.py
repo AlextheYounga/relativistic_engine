@@ -20,6 +20,7 @@ from .reporting import (
     print_measurement_header,
     print_snapshot_pair,
 )
+from .thermodynamics import TemperatureCalibration
 
 
 @dataclass
@@ -33,6 +34,7 @@ class ExperimentConfig:
     particle_count: int = 1000
     preparation_time: float = 12.0
     thermal_rapidity_sigma: float = 0.20
+    initial_temperature_fahrenheit: float = 70.0
     time_step: float = 0.0025
     random_seed: int = 7
     compression_stages: tuple[float, ...] = (0.00, 0.25, 0.50, 0.75)
@@ -114,9 +116,16 @@ def run_experiment(config: ExperimentConfig) -> None:
 
     engine_a, engine_b = build_engines(config)
     print(f"initial slices: WALL t={engine_a.time:.5f}  PISTON t={engine_b.time:.5f}")
+    engine_a.run_until(0.0)
+    engine_b.run_until(0.0)
+    temperature_calibration = TemperatureCalibration(
+        engine_a.snapshot().ideal_gas_temperature,
+        config.initial_temperature_fahrenheit,
+    )
     print_measurement_header(
         engine_a.trapped_gas_mass,
         engine_a.specific_gas_constant,
+        temperature_calibration,
     )
 
     for fraction in config.compression_stages:
@@ -132,10 +141,11 @@ def run_experiment(config: ExperimentConfig) -> None:
         )
         snapshot_a = engine_a.snapshot_and_reset_interval(config.spatial_bins)
         snapshot_b = engine_b.snapshot_and_reset_interval(config.spatial_bins)
-        print_snapshot_pair(snapshot_a, snapshot_b)
+        print_snapshot_pair(snapshot_a, snapshot_b, temperature_calibration)
 
     print_conservation(engine_a, engine_b)
     print("\nTemperature uses each frame's own pressure and volume.")
+    print("Fahrenheit values share the initial 70 deg F WALL-frame calibration.")
 
 
 def main() -> None:

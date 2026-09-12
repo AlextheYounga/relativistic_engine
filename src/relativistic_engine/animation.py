@@ -15,6 +15,7 @@ from .experiment import (
     target_time_for_compression_fraction,
 )
 from .relativity import gamma_from_velocity
+from .thermodynamics import TemperatureCalibration
 
 
 def write_animation_json(
@@ -35,6 +36,12 @@ def write_animation_json(
         final_compression_fraction,
     )
     wall_engine, piston_engine = build_engines(config)
+    wall_engine.run_until(0.0)
+    piston_engine.run_until(0.0)
+    temperature_calibration = TemperatureCalibration(
+        wall_engine.snapshot().ideal_gas_temperature,
+        config.initial_temperature_fahrenheit,
+    )
     frames = []
 
     for fraction in np.linspace(0.0, final_fraction, frame_count):
@@ -58,10 +65,15 @@ def write_animation_json(
         frames.append(
             {
                 "compression_fraction": compression_fraction,
-                "wall": _frame_state(wall_engine, config.piston_proper_length),
+                "wall": _frame_state(
+                    wall_engine,
+                    config.piston_proper_length,
+                    temperature_calibration,
+                ),
                 "piston": _frame_state(
                     piston_engine,
                     config.piston_proper_length,
+                    temperature_calibration,
                 ),
             }
         )
@@ -71,8 +83,10 @@ def write_animation_json(
             "particle_count": config.particle_count,
             "piston_speed": config.piston_speed,
             "piston_proper_length": config.piston_proper_length,
+            "initial_temperature_fahrenheit": config.initial_temperature_fahrenheit,
             "frame_count": frame_count,
-            "temperature_formula": "T = P * V / (m * R)",
+            "temperature_unit": "deg F",
+            "temperature_formula": "Fahrenheit calibrated from T = P * V / (m * R)",
         },
         "frames": frames,
     }
@@ -97,7 +111,11 @@ def _final_compression_fraction(
     return requested_fraction
 
 
-def _frame_state(engine: Engine, piston_proper_length: float) -> dict[str, Any]:
+def _frame_state(
+    engine: Engine,
+    piston_proper_length: float,
+    temperature_calibration: TemperatureCalibration,
+) -> dict[str, Any]:
     snapshot = engine.snapshot()
     piston_length = piston_proper_length / gamma_from_velocity(snapshot.piston_velocity)
     return {
@@ -111,7 +129,10 @@ def _frame_state(engine: Engine, piston_proper_length: float) -> dict[str, Any]:
         "chamber_length": snapshot.chamber_length,
         "chamber_volume": snapshot.chamber_volume,
         "pressure": snapshot.average_gas_stress,
-        "temperature": snapshot.ideal_gas_temperature,
+        "model_temperature": snapshot.ideal_gas_temperature,
+        "temperature": temperature_calibration.to_fahrenheit(
+            snapshot.ideal_gas_temperature
+        ),
         "particle_positions": engine.positions.tolist(),
         "particle_velocities": engine.velocities.tolist(),
     }

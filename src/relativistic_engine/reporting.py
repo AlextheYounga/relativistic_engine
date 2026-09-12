@@ -2,35 +2,50 @@
 
 from .engine import Engine
 from .models import Snapshot
+from .thermodynamics import TemperatureCalibration
 
 
 def print_measurement_header(
-    trapped_gas_mass: float, specific_gas_constant: float
+    trapped_gas_mass: float,
+    specific_gas_constant: float,
+    temperature_calibration: TemperatureCalibration,
 ) -> None:
     """Print the invariant inputs and columns used for all stage readings."""
     print("\nTEMPERATURE: T = P * V / (m * R)")
     print(f"m = {trapped_gas_mass:.3f}    R = {specific_gas_constant:.3f}")
+    print(
+        "Fahrenheit calibration: initial WALL temperature = "
+        f"{temperature_calibration.reference_fahrenheit:.2f} deg F"
+    )
     print()
     print(
         f"{'STAGE':>7}  {'FRAME':<7}  {'TIME':>10}  "
-        f"{'VOLUME':>12}  {'PRESSURE':>14}  {'TEMPERATURE':>14}"
+        f"{'VOLUME':>12}  {'PRESSURE':>14}  {'TEMP (deg F)':>14}"
     )
     print("-" * 86)
 
 
-def print_snapshot_pair(snapshot_a: Snapshot, snapshot_b: Snapshot) -> None:
+def print_snapshot_pair(
+    snapshot_a: Snapshot,
+    snapshot_b: Snapshot,
+    temperature_calibration: TemperatureCalibration,
+) -> None:
     """Print one row per frame for a matched piston event."""
     stage = f"{100 * snapshot_a.compression_fraction:.1f}%"
-    _print_snapshot(stage, snapshot_a)
-    _print_snapshot("", snapshot_b)
+    _print_snapshot(stage, snapshot_a, temperature_calibration)
+    _print_snapshot("", snapshot_b, temperature_calibration)
 
 
-def _print_snapshot(stage: str, snapshot: Snapshot) -> None:
+def _print_snapshot(
+    stage: str,
+    snapshot: Snapshot,
+    temperature_calibration: TemperatureCalibration,
+) -> None:
     print(
         f"{stage:>7}  {snapshot.frame_name:<7}  {snapshot.time:10.5f}  "
         f"{snapshot.chamber_volume:12.5f}  "
         f"{snapshot.average_gas_stress:14.6f}  "
-        f"{snapshot.ideal_gas_temperature:14.6f}"
+        f"{temperature_calibration.to_fahrenheit(snapshot.ideal_gas_temperature):14,.2f}"
     )
 
 

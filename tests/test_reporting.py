@@ -22,6 +22,7 @@ class ExperimentOutputTests(unittest.TestCase):
         self.assertIn("0.0%  WALL", report)
         self.assertIn("PISTON", report)
         self.assertIn("TEMPERATURE: T = P * V / (m * R)", report)
-        self.assertIn("TEMPERATURE", report)
+        self.assertIn("initial WALL temperature = 70.00 deg F", report)
+        self.assertIn("TEMP (deg F)", report)
         self.assertIn("CONSERVATION", report)
         self.assertNotIn("MATCHED PISTON EVENT", report)

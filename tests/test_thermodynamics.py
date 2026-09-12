@@ -10,12 +10,27 @@ from relativistic_engine.relativity import (
     transform_velocity,
 )
 from relativistic_engine.thermodynamics import (
+    TemperatureCalibration,
     bulk_average_pressure,
+    fahrenheit_to_kelvin,
     ideal_gas_temperature,
+    kelvin_to_fahrenheit,
 )
 
 
 class IdealGasTemperatureTests(unittest.TestCase):
+    def test_calibrates_reference_temperature_to_fahrenheit(self) -> None:
+        calibration = TemperatureCalibration(
+            reference_model_temperature=2.0,
+            reference_fahrenheit=70.0,
+        )
+
+        self.assertAlmostEqual(calibration.to_fahrenheit(2.0), 70.0)
+        self.assertAlmostEqual(
+            calibration.to_fahrenheit(4.0),
+            kelvin_to_fahrenheit(2.0 * fahrenheit_to_kelvin(70.0)),
+        )
+
     def test_uses_pressure_volume_trapped_mass_and_specific_gas_constant(self) -> None:
         pressure = 12.0
         volume = 5.0

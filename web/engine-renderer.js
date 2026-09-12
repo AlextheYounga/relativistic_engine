@@ -77,7 +77,7 @@ export function drawEngine(
     wallX,
     cylinderTop,
     cylinderBottom,
-    chamber.temperature,
+    chamber.model_temperature,
     maximumTemperature,
   );
   drawConnectingRod(context, pistonBackX, cylinderMiddle);

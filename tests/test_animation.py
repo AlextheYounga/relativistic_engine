@@ -22,11 +22,14 @@ class AnimationExportTests(unittest.TestCase):
 
         self.assertEqual(document["metadata"]["frame_count"], 3)
         self.assertEqual(document["metadata"]["particle_count"], 8)
+        self.assertEqual(document["metadata"]["temperature_unit"], "deg F")
         self.assertEqual(len(document["frames"]), 3)
         self.assertEqual(document["frames"][0]["compression_fraction"], 0.0)
         self.assertEqual(document["frames"][-1]["compression_fraction"], 0.1)
 
         initial_frame = document["frames"][0]
+        self.assertAlmostEqual(initial_frame["wall"]["temperature"], 70.0)
+        self.assertGreater(initial_frame["wall"]["model_temperature"], 0.0)
         self.assertLess(
             initial_frame["wall"]["piston_length"],
             initial_frame["piston"]["piston_length"],

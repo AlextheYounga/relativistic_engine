@@ -2,7 +2,48 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
+
+
+ABSOLUTE_ZERO_FAHRENHEIT = -459.67
+
+
+def fahrenheit_to_kelvin(temperature: float) -> float:
+    """Convert a Fahrenheit temperature to kelvin."""
+    return (temperature - ABSOLUTE_ZERO_FAHRENHEIT) * 5.0 / 9.0
+
+
+def kelvin_to_fahrenheit(temperature: float) -> float:
+    """Convert a kelvin temperature to Fahrenheit."""
+    if temperature < 0.0:
+        raise ValueError("Kelvin temperature cannot be negative")
+    return temperature * 9.0 / 5.0 + ABSOLUTE_ZERO_FAHRENHEIT
+
+
+@dataclass(frozen=True)
+class TemperatureCalibration:
+    """Map normalized model temperatures onto an absolute Fahrenheit scale."""
+
+    reference_model_temperature: float
+    reference_fahrenheit: float
+
+    def __post_init__(self) -> None:
+        if self.reference_model_temperature <= 0.0:
+            raise ValueError("Reference model temperature must be positive")
+        if self.reference_fahrenheit <= ABSOLUTE_ZERO_FAHRENHEIT:
+            raise ValueError("Reference temperature must be above absolute zero")
+
+    def to_fahrenheit(self, model_temperature: float) -> float:
+        """Scale an absolute model temperature and return Fahrenheit."""
+        if model_temperature < 0.0:
+            raise ValueError("Model temperature cannot be negative")
+        reference_kelvin = fahrenheit_to_kelvin(self.reference_fahrenheit)
+        temperature_kelvin = (
+            model_temperature / self.reference_model_temperature * reference_kelvin
+        )
+        return kelvin_to_fahrenheit(temperature_kelvin)
 
 
 def bulk_average_pressure(

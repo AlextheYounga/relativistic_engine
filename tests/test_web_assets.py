@@ -21,7 +21,7 @@ class WebAssetTests(unittest.TestCase):
         )
 
         self.assertIn("calculateFrameBounds(state.frames", animation)
-        self.assertIn("showMotion(\"wall-motion\"", animation)
+        self.assertIn('showMotion("wall-motion"', animation)
         self.assertIn("drawPiston(context", renderer)
         self.assertIn("drawEndWall(context", renderer)
         self.assertIn("drawConnectingRod(context", renderer)
