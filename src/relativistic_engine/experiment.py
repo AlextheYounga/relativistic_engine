@@ -28,6 +28,7 @@ class ExperimentConfig:
     initial_chamber_length: float = 10.0
     cross_sectional_area: float = AREA
     specific_gas_constant: float = SPECIFIC_GAS_CONSTANT
+    piston_proper_length: float = 1.0
     piston_speed: float = 0.95
     particle_count: int = 1000
     preparation_time: float = 12.0

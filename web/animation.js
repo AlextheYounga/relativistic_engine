@@ -34,6 +34,9 @@
   function showReadouts(id, chamber) {
     element(id).innerHTML = [
       ["time", `t ${number(chamber.time)}`],
+      ["chamber length", number(chamber.chamber_length)],
+      ["piston length", number(chamber.piston_length)],
+      ["piston face area", number(chamber.piston_face_area)],
       ["pressure", number(chamber.pressure)],
       ["volume", number(chamber.chamber_volume)],
       ["temperature", number(chamber.temperature)],
@@ -45,11 +48,14 @@
       .join("");
   }
 
-  function calculateBounds(frameName) {
-    const coordinates = state.frames.flatMap((frame) => {
-      const chamber = frame[frameName];
-      return [chamber.piston_position, chamber.wall_position];
-    });
+  function calculateSharedBounds() {
+    const coordinates = state.frames.flatMap((frame) =>
+      [frame.wall, frame.piston].flatMap((chamber) => [
+        chamber.piston_position - (Number(chamber.piston_length) || 0),
+        chamber.piston_position,
+        chamber.wall_position,
+      ]),
+    );
     return {
       minimum: Math.min(...coordinates),
       maximum: Math.max(...coordinates),
@@ -88,6 +94,12 @@
       cylinderLeft,
       cylinderRight,
     );
+    const pistonBackX = coordinateToCanvas(
+      chamber.piston_position - (Number(chamber.piston_length) || 0),
+      bounds,
+      cylinderLeft,
+      cylinderRight,
+    );
     const wallX = coordinateToCanvas(
       chamber.wall_position,
       bounds,
@@ -111,8 +123,8 @@
       cylinderBottom - cylinderTop - 10,
     );
 
-    drawActuatorRod(context, pistonX, cylinderMiddle);
-    drawPiston(context, pistonX, cylinderTop, cylinderBottom);
+    drawActuatorRod(context, pistonBackX, cylinderMiddle);
+    drawPiston(context, pistonBackX, pistonX, cylinderTop, cylinderBottom);
     drawEndWall(context, wallX, cylinderTop, cylinderBottom);
     drawParticles(context, chamber, bounds, cylinderLeft, cylinderRight, cylinderTop, cylinderBottom);
     drawLabels(context, pistonX, wallX, cylinderTop, cylinderBottom, compressionFraction);
@@ -135,8 +147,8 @@
     context.setLineDash([]);
   }
 
-  function drawActuatorRod(context, pistonX, middle) {
-    const rodEnd = Math.max(14, pistonX - 7);
+  function drawActuatorRod(context, pistonBackX, middle) {
+    const rodEnd = Math.max(14, pistonBackX);
     context.lineCap = "round";
     context.strokeStyle = "#11191e";
     context.lineWidth = 13;
@@ -150,16 +162,18 @@
     context.lineCap = "butt";
   }
 
-  function drawPiston(context, pistonX, top, bottom) {
+  function drawPiston(context, pistonBackX, pistonX, top, bottom) {
+    const bodyLeft = Math.min(pistonBackX, pistonX);
+    const bodyWidth = Math.max(6, Math.abs(pistonX - pistonBackX));
     context.fillStyle = colors.piston;
     context.strokeStyle = colors.pistonEdge;
     context.lineWidth = 2;
-    context.fillRect(pistonX - 7, top + 2, 14, bottom - top - 4);
-    context.strokeRect(pistonX - 7, top + 2, 14, bottom - top - 4);
+    context.fillRect(bodyLeft, top + 2, bodyWidth, bottom - top - 4);
+    context.strokeRect(bodyLeft, top + 2, bodyWidth, bottom - top - 4);
 
     context.fillStyle = "#3b4951";
-    context.fillRect(pistonX - 4, top + 13, 8, 3);
-    context.fillRect(pistonX - 4, bottom - 16, 8, 3);
+    context.fillRect(pistonX - 4, top + 13, 4, 3);
+    context.fillRect(pistonX - 4, bottom - 16, 4, 3);
   }
 
   function drawEndWall(context, wallX, top, bottom) {
@@ -220,13 +234,13 @@
     drawEngine(
       element("wall-canvas"),
       frame.wall,
-      state.bounds.wall,
+      state.bounds,
       frame.compression_fraction,
     );
     drawEngine(
       element("piston-canvas"),
       frame.piston,
-      state.bounds.piston,
+      state.bounds,
       frame.compression_fraction,
     );
     showReadouts("wall-readouts", frame.wall);
@@ -304,8 +318,7 @@
         throw new Error("The JSON file contains no animation frames");
       }
       state.frames = data.frames;
-      state.bounds.wall = calculateBounds("wall");
-      state.bounds.piston = calculateBounds("piston");
+      state.bounds = calculateSharedBounds();
       state.maximumTemperature = Math.max(
         1,
         ...state.frames.flatMap((frame) => [

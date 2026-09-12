@@ -11,6 +11,7 @@ class AnimationExportTests(unittest.TestCase):
         config = ExperimentConfig(
             particle_count=8,
             preparation_time=0.1,
+            piston_proper_length=1.0,
             compression_stages=(0.0, 0.1),
         )
 
@@ -24,6 +25,21 @@ class AnimationExportTests(unittest.TestCase):
         self.assertEqual(len(document["frames"]), 3)
         self.assertEqual(document["frames"][0]["compression_fraction"], 0.0)
         self.assertEqual(document["frames"][-1]["compression_fraction"], 0.1)
+
+        initial_frame = document["frames"][0]
+        self.assertLess(
+            initial_frame["wall"]["piston_length"],
+            initial_frame["piston"]["piston_length"],
+        )
+        self.assertEqual(initial_frame["piston"]["piston_length"], 1.0)
+        self.assertEqual(
+            initial_frame["wall"]["piston_face_area"],
+            initial_frame["piston"]["piston_face_area"],
+        )
+        self.assertGreater(
+            initial_frame["wall"]["chamber_length"],
+            initial_frame["piston"]["chamber_length"],
+        )
 
         for frame in document["frames"]:
             self.assertEqual(len(frame["wall"]["particle_positions"]), 8)

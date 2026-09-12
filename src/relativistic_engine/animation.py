@@ -14,6 +14,7 @@ from .experiment import (
     build_engines,
     target_time_for_compression_fraction,
 )
+from .relativity import gamma_from_velocity
 
 
 def write_animation_json(
@@ -26,6 +27,8 @@ def write_animation_json(
     """Simulate matched frame states and write browser-ready JSON."""
     if frame_count < 2:
         raise ValueError("Animation requires at least two frames")
+    if config.piston_proper_length <= 0.0:
+        raise ValueError("Piston proper length must be positive")
 
     final_fraction = _final_compression_fraction(
         config,
@@ -55,8 +58,11 @@ def write_animation_json(
         frames.append(
             {
                 "compression_fraction": compression_fraction,
-                "wall": _frame_state(wall_engine),
-                "piston": _frame_state(piston_engine),
+                "wall": _frame_state(wall_engine, config.piston_proper_length),
+                "piston": _frame_state(
+                    piston_engine,
+                    config.piston_proper_length,
+                ),
             }
         )
 
@@ -64,6 +70,7 @@ def write_animation_json(
         "metadata": {
             "particle_count": config.particle_count,
             "piston_speed": config.piston_speed,
+            "piston_proper_length": config.piston_proper_length,
             "frame_count": frame_count,
             "temperature_formula": "T = P * V / (m * R)",
         },
@@ -90,12 +97,16 @@ def _final_compression_fraction(
     return requested_fraction
 
 
-def _frame_state(engine: Engine) -> dict[str, Any]:
+def _frame_state(engine: Engine, piston_proper_length: float) -> dict[str, Any]:
     snapshot = engine.snapshot()
+    piston_length = piston_proper_length / gamma_from_velocity(snapshot.piston_velocity)
     return {
         "time": snapshot.time,
         "piston_position": snapshot.piston_position,
+        "piston_length": piston_length,
+        "piston_face_area": engine.cross_sectional_area,
         "wall_position": snapshot.wall_position,
+        "chamber_length": snapshot.chamber_length,
         "chamber_volume": snapshot.chamber_volume,
         "pressure": snapshot.average_gas_stress,
         "temperature": snapshot.ideal_gas_temperature,

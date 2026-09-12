@@ -17,7 +17,7 @@ class WebAssetTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('state.bounds.wall = calculateBounds("wall")', javascript)
+        self.assertIn("state.bounds = calculateSharedBounds()", javascript)
         self.assertIn("drawPiston(context", javascript)
         self.assertIn("drawEndWall(context", javascript)
         self.assertIn("drawActuatorRod(context", javascript)

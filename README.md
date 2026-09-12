@@ -15,6 +15,12 @@ The pressure is the chamber-average longitudinal momentum flux
 an observer-frame measurement, directed gas motion contributes to the result.
 No bulk-motion or proper-temperature correction is applied.
 
+The animation gives the piston a visualization-only proper length of `1.0`.
+Its displayed longitudinal length is Lorentz-contracted in frames where the
+piston moves. Its face area is unchanged because the boost is parallel to the
+cylinder axis. The simulation's collision surface remains the prescribed,
+infinitely thin piston boundary.
+
 Run the experiment with:
 
 ```shell
