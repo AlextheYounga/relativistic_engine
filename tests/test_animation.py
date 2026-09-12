@@ -1,0 +1,36 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from relativistic_engine import ExperimentConfig, write_animation_json
+
+
+class AnimationExportTests(unittest.TestCase):
+    def test_writes_matched_states_for_both_frames(self) -> None:
+        config = ExperimentConfig(
+            particle_count=8,
+            preparation_time=0.1,
+            compression_stages=(0.0, 0.1),
+        )
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_path = Path(temporary_directory) / "simulation.json"
+            write_animation_json(config, output_path, frame_count=3)
+            document = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(document["metadata"]["frame_count"], 3)
+        self.assertEqual(document["metadata"]["particle_count"], 8)
+        self.assertEqual(len(document["frames"]), 3)
+        self.assertEqual(document["frames"][0]["compression_fraction"], 0.0)
+        self.assertEqual(document["frames"][-1]["compression_fraction"], 0.1)
+
+        for frame in document["frames"]:
+            self.assertEqual(len(frame["wall"]["particle_positions"]), 8)
+            self.assertEqual(len(frame["piston"]["particle_positions"]), 8)
+            self.assertGreater(frame["wall"]["temperature"], 0.0)
+            self.assertGreater(frame["piston"]["temperature"], 0.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

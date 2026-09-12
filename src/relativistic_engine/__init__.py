@@ -1,5 +1,6 @@
 """Relativistic piston temperature experiment."""
 
+from .animation import write_animation_json
 from .boundaries import BoundaryState, BoundaryWorldlines
 from .engine import Engine
 from .experiment import (
@@ -46,4 +47,5 @@ __all__ = [
     "transform_event",
     "transform_velocity",
     "velocity_from_energy_momentum",
+    "write_animation_json",
 ]

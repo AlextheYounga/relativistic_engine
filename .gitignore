@@ -232,6 +232,9 @@ __trash__
 *.log
 *.tmp
 *.temp
+web/dist/
+web/node_modules/
+web/public/simulation.json
 *.bak
 *~
 *.swp

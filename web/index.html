@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Static browser viewer for the relativistic particle simulation.">
+  <title>Relativistic Engine | Simulation Viewer</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">RELATIVISTIC ENGINE / OBSERVATORY</p>
+        <h1>Chamber comparison</h1>
+        <p class="lede">The same piston event viewed from two independently evolved frames.</p>
+      </div>
+      <div class="run-meta" aria-label="Simulation metadata">
+        <span id="particle-count">-- particles</span>
+        <span id="piston-speed">-- piston speed</span>
+      </div>
+    </header>
+
+    <section id="loading" class="notice" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Loading simulation frames…</p>
+    </section>
+
+    <section id="error" class="notice notice-error" hidden aria-live="assertive">
+      <p><strong>Simulation unavailable.</strong> Serve the <code>web/</code> directory over HTTP and first generate <code>simulation.json</code> beside this page.</p>
+    </section>
+
+    <section id="viewer" hidden aria-label="Simulation viewer">
+      <div class="stage">
+        <article class="chamber-panel">
+          <div class="panel-heading">
+            <div><span class="panel-index">01</span><h2>WALL</h2></div>
+            <span class="panel-tag">end-wall rest frame</span>
+          </div>
+          <canvas id="wall-canvas" role="img" aria-label="Wall chamber particle visualization"></canvas>
+          <dl class="readouts" id="wall-readouts"></dl>
+        </article>
+        <article class="chamber-panel">
+          <div class="panel-heading">
+            <div><span class="panel-index">02</span><h2>PISTON</h2></div>
+            <span class="panel-tag">piston rest frame</span>
+          </div>
+          <canvas id="piston-canvas" role="img" aria-label="Piston chamber particle visualization"></canvas>
+          <dl class="readouts" id="piston-readouts"></dl>
+        </article>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-top">
+          <span class="frame-label"><span id="frame-number">Frame 1</span> <span class="muted">/ <span id="frame-total">--</span></span></span>
+          <span id="compression" class="compression">Compression: --</span>
+        </div>
+        <label for="scrubber" class="sr-only">Simulation frame</label>
+        <input id="scrubber" type="range" min="0" max="0" value="0" step="1">
+        <div class="time-scale"><span>START</span><span id="current-time">t = --</span><span>END</span></div>
+      </div>
+
+      <div class="controls" aria-label="Playback controls">
+        <button id="play-pause" type="button" class="primary" aria-pressed="false">Play</button>
+        <button id="restart" type="button">Restart</button>
+        <label class="speed-control" for="speed">Speed
+          <select id="speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+        <p id="formula" class="formula">T = P * V / (m * R)</p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./animation.js"></script>
+</body>
+</html>

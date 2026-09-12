@@ -139,4 +139,11 @@ def run_experiment(config: ExperimentConfig) -> None:
 
 def main() -> None:
     """Run the experiment with its default configuration."""
-    run_experiment(ExperimentConfig())
+    from pathlib import Path
+
+    from .animation import write_animation_json
+
+    config = ExperimentConfig()
+    run_experiment(config)
+    output_path = write_animation_json(config, Path("web/public/simulation.json"))
+    print(f"Animation data written to {output_path}")

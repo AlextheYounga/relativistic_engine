@@ -20,3 +20,21 @@ Run the experiment with:
 ```shell
 uv run python -m relativistic_engine
 ```
+
+The command also writes `web/public/simulation.json` for the static Vite app.
+Install its development dependencies and start the local viewer:
+
+```shell
+npm --prefix web install
+npm --prefix web run dev
+```
+
+The terminal prints the local URL. No application API is required.
+
+Build a deployable static site with:
+
+```shell
+npm --prefix web run build
+```
+
+The complete site is written to `web/dist/`, including the generated JSON.
